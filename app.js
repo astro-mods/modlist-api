@@ -187,10 +187,26 @@ app.get('/versions/:versionId/dependencies', async (req, res) => {
   }
 });
 
+//Get a specific dependency by name for a specific mod version:
+//Method: GET
+//URL: /versions/{versionId}/dependencies/{dependencyModID}
+//Example: /versions/11/dependencies/UITools
+app.get('/versions/:versionId/dependencies/:dependencyModID', async (req, res) => {
+  try {
+    const { versionId, dependencyModID } = req.params;
 
+    const [dependencies, fields2] = await pool.query('SELECT * FROM ModDependencies WHERE modVersionId = ? AND dependencyModID = ?', [versionId, dependencyModID]);
+    
+    if (dependencies.length === 0) {
+      return res.status(404).json({ message: 'Mod, version, or dependency not found' });
+    }
 
-
-
+    return res.json(dependencies[0]);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+});
 
 
 // Export the app for testing
