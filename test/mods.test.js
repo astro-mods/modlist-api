@@ -199,7 +199,7 @@ describe('GET /versions/:versionID/dependencies', () => {
     expect(res.body).toEqual([
       {
         id: 4,
-        modVersionId: "11",
+        modVersionID: "11",
         dependencyModID: "UITools",
         minimumDependencyVersion: "1.0.0",
         maximumDependencyVersion: "1.0.1",
@@ -223,5 +223,7 @@ describe('GET /versions/:versionID/dependencies', () => {
   }
   );
 });
+
+
 
   

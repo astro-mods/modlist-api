@@ -174,7 +174,7 @@ app.get('/versions/:versionId/dependencies', async (req, res) => {
   try {
     const { versionId } = req.params;
 
-    const [dependencies, fields2] = await pool.query('SELECT * FROM ModDependencies WHERE modVersionId = ?', [versionId]);
+    const [dependencies, fields2] = await pool.query('SELECT * FROM ModDependencies WHERE modVersionID = ?', [versionId]);
 
     if (dependencies.length === 0) {
       return res.status(404).json({ message: 'Mod, version, or dependencies not found' });
@@ -187,26 +187,207 @@ app.get('/versions/:versionId/dependencies', async (req, res) => {
   }
 });
 
-//Get a specific dependency by name for a specific mod version:
+//Get everything required to install a specific mod version:
 //Method: GET
-//URL: /versions/{versionId}/dependencies/{dependencyModID}
-//Example: /versions/11/dependencies/UITools
-app.get('/versions/:versionId/dependencies/:dependencyModID', async (req, res) => {
-  try {
-    const { versionId, dependencyModID } = req.params;
+//URL: /install/{modId}/{versionId}
+//Example: /install/UITools/1.0.0?dependencies=optional
+//Default Example: /install/UITools/latest?dependencies=required
+//When a dependency is optional, it will be included in the response if ?dependencies=optional is provided.
 
-    const [dependencies, fields2] = await pool.query('SELECT * FROM ModDependencies WHERE modVersionId = ? AND dependencyModID = ?', [versionId, dependencyModID]);
-    
-    if (dependencies.length === 0) {
-      return res.status(404).json({ message: 'Mod, version, or dependency not found' });
+app.get('/install/:modId/:versionNumberInput', async (req, res) => {
+  try {
+    const { modId, versionNumberInput } = req.params;
+    const { dependencies } = req.query;
+
+    let versionNumber = versionNumberInput;
+
+    // if versionNumber is latest then we need to get the latest version number from the database
+    if (versionNumber === 'latest') {
+      const [version, fields] = await pool.query('SELECT * FROM ModVersions WHERE modID = ? ORDER BY versionNumber DESC LIMIT 1', [modId]);
+      versionNumber = version[0].versionNumber;
     }
 
-    return res.json(dependencies[0]);
+
+    const [mod, fields] = await pool.query('SELECT * FROM Mods WHERE modID = ?', [modId]);
+
+    if (mod.length === 0) {
+      return res.status(404).json({ message: 'Mod not found' });
+    }
+
+    const [version, fields2] = await pool.query('SELECT * FROM ModVersions WHERE modID = ? AND versionNumber = ?', [modId, versionNumber]);
+
+    if (version.length === 0) {
+      return res.status(404).json({ message: 'Version not found' });
+    }
+
+    const [files, fields3] = await pool.query('SELECT * FROM ModFiles WHERE modVersionID = ?', [version[0].modVersionID]);
+
+    if (files.length === 0) {
+      return res.status(404).json({ message: 'Files not found' });
+    }
+
+    const [dependencies2, fields4] = await pool.query('SELECT * FROM ModDependencies WHERE modVersionID = ?', [version[0].modVersionID]);
+    //There can be no dependencies, so we don't need to check for a 404 here.
+
+    // End of Queries
+
+    // Start of Response
+
+    const response = {
+      mod: mod[0],
+      version: version[0],
+      files: files,
+    };
+
+    // End of Response
+
+    // Start of Optional Dependencies
+
+    // If there are no dependencies, we can just return the response
+
+    if (dependencies2.length === 0) {
+      return res.json(response);
+    }
+
+    // If there are dependencies, we need to check if the user wants to install the dependencies with optional and required or only the required dependencies.
+    
+    // If the user wants to install the optional dependencies, we can just add the dependencies to the response and return it.
+
+    if (dependencies === 'optional') {
+      response.dependencies = dependencies2;
+      return res.json(response);
+    }
+
+    // If the user wants to install only the required dependencies, we need to filter out the optional dependencies.
+
+    const requiredDependencies = dependencies2.filter((dependency) => dependency.dependencyType === 'required');
+
+    // If there are no required dependencies, we can just return the response
+
+    if (requiredDependencies.length === 0) {
+      return res.json(response);
+    }
+
+    // If there are required dependencies, we need to add them to the response and return it.
+
+    response.dependencies = requiredDependencies;
+    return res.json(response);
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 });
+
+//Get every file required to install a specific mod version:
+//Method: GET
+//URL: /simple/{modId}/{versionNumber}
+//Example: /simple/UITools/1.0.0?dependencies=optional
+//Default Example: /simple/UITools/latest?dependencies=required
+//When a dependency is optional, it will be included in the response if ?dependencies=optional is provided.
+//This endpoint returns all file rows for that mod and all of its dependencies by looping.
+//Completely different from /install/{modId}/{versionNumber}.
+
+//Function to get all dependencies for a specific mod version:
+async function getDependencies(versionId) {
+  try {
+    const [dependencies, fields2] = await pool.query('SELECT * FROM ModDependencies WHERE modVersionID = ?', [versionId]);
+
+    if (dependencies.length === 0) {
+      return [];
+    }
+
+    const requiredDependencies = dependencies.filter((dependency) => dependency.dependencyType === 'required');
+
+    if (requiredDependencies.length === 0) {
+      return [];
+    }
+
+    const dependencyIds = requiredDependencies.map((dependency) => dependency.dependencyModID);
+
+    if (dependencyIds.length === 0) {
+      return [];
+    }
+
+    const [mods, fields3] = await pool.query('SELECT * FROM Mods WHERE modID IN (?)', [dependencyIds]);
+
+    const modIds = mods.map((mod) => mod.modID);
+
+    if (modIds.length === 0) {
+      return [];
+    }
+
+    const [modVersions, fields4] = await pool.query('SELECT * FROM ModVersions WHERE modID IN (?)', [modIds]);
+
+    const versionIds = modVersions.map((modVersion) => modVersion.modVersionID);
+
+    if (versionIds.length === 0) {
+      return [];
+    }
+
+    const [dependencies2, fields5] = await pool.query('SELECT * FROM ModDependencies WHERE modVersionID IN (?)', [versionIds]);
+
+    const requiredDependencies2 = dependencies2.filter((dependency) => dependency.dependencyType === 'required');
+
+    const dependencyIds2 = requiredDependencies2.map((dependency) => dependency.dependencyModID);
+
+    if (dependencyIds2.length === 0) {
+      return requiredDependencies;
+    }
+
+    const [mods2, fields6] = await pool.query('SELECT * FROM Mods WHERE modID IN (?)', [dependencyIds2]);
+
+    const modIds2 = mods2.map((mod) => mod.modID);
+
+    if (modIds2.length === 0) {
+      return requiredDependencies;
+    }
+
+    const [modVersions2, fields7] = await pool.query('SELECT * FROM ModVersions WHERE modID IN (?)', [modIds2]);
+
+    const versionIds2 = modVersions2.map((modVersion) => modVersion.modVersionID);
+
+    if (versionIds2.length === 0) {
+      return requiredDependencies.concat(requiredDependencies2);
+    }
+
+    const [dependencies3, fields8] = await pool.query('SELECT * FROM ModDependencies WHERE modVersionID IN (?)', [versionIds2]);
+
+    const requiredDependencies3 = dependencies3.filter((dependency) => dependency.dependencyType === 'required');
+
+    return requiredDependencies.concat(requiredDependencies2).concat(requiredDependencies3);
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+
+//Test to get all dependencies for a specific mod version console log:
+getDependencies('3').then((dependencies) => console.log(dependencies));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+      
+
+
+
+
+
+
+
+
 
 
 // Export the app for testing
