@@ -26,6 +26,22 @@ app.get('/health', (req, res) => {
 const pool = mysql.createPool(process.env.DATABASE_URL);
 
 // Routes
+
+// Get total number of mods:
+
+app.get('/mods/total', async (req, res) => {
+  try {
+    const [mods, fields] = await pool.query('SELECT COUNT(*) FROM Mods');
+    console.log(mods);
+
+    return res.json(mods[0]['count(*)']);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+
 app.get('/mods', async (req, res) => {
   try {
     let { limit, offset, author } = req.query;
@@ -146,13 +162,13 @@ app.get('/versions/:versionID/files', async (req, res) => {
 
 // Get a specific file for a specific mod version:
 //Method: GET
-//URL: /versions/{versionId}/files/{fileID}
-//Example: /versions/11/files/1
-app.get('/versions/:versionID/files/:fileID', async (req, res) => {
+//URL: /files/{fileID}
+//Example: /files/1
+app.get('/files/:fileID', async (req, res) => {
   try {
-    const { versionID, fileID } = req.params;
+    const { fileID } = req.params;
 
-    const [files, fields2] = await pool.query('SELECT * FROM ModFiles WHERE modVersionID = ? AND fileID = ?', [versionID, fileID]);
+    const [files, fields2] = await pool.query('SELECT * FROM ModFiles WHERE fileID = ?', [fileID]);
 
     if (files.length === 0) {
       return res.status(404).json({ message: 'Mod, version, or file not found' });
@@ -189,12 +205,12 @@ app.get('/versions/:versionId/dependencies', async (req, res) => {
 
 //Get everything required to install a specific mod version:
 //Method: GET
-//URL: /install/{modId}/{versionId}
-//Example: /install/UITools/1.0.0?dependencies=optional
-//Default Example: /install/UITools/latest?dependencies=required
+//URL: /all/{modId}/{versionId}
+//Example: /all/UITools/1.0.0?dependencies=optional
+//Default Example: /all/UITools/latest?dependencies=required
 //When a dependency is optional, it will be included in the response if ?dependencies=optional is provided.
 
-app.get('/install/:modId/:versionNumberInput', async (req, res) => {
+app.get('/all/:modId/:versionNumberInput', async (req, res) => {
   try {
     const { modId, versionNumberInput } = req.params;
     const { dependencies } = req.query;
@@ -287,102 +303,29 @@ app.get('/install/:modId/:versionNumberInput', async (req, res) => {
 //This endpoint returns all file rows for that mod and all of its dependencies by looping.
 //Completely different from /install/{modId}/{versionNumber}.
 
-//Function to get all dependencies for a specific mod version:
-async function getDependencies(versionId) {
+// That endpoint can be done later if we want to.
+
+//Search by mod name:
+//Method: GET
+//URL: /search/{fragment of mod name}
+//Example: /search/UITo
+
+app.get('/search/:fragment', async (req, res) => {
   try {
-    const [dependencies, fields2] = await pool.query('SELECT * FROM ModDependencies WHERE modVersionID = ?', [versionId]);
+    const { fragment } = req.params;
 
-    if (dependencies.length === 0) {
-      return [];
+    const [mods, fields] = await pool.query('SELECT * FROM Mods WHERE modName LIKE ?', [`%${fragment}%`]);
+
+    if (mods.length === 0) {
+      return res.status(404).json({ message: 'Mod not found' });
     }
 
-    const requiredDependencies = dependencies.filter((dependency) => dependency.dependencyType === 'required');
-
-    if (requiredDependencies.length === 0) {
-      return [];
-    }
-
-    const dependencyIds = requiredDependencies.map((dependency) => dependency.dependencyModID);
-
-    if (dependencyIds.length === 0) {
-      return [];
-    }
-
-    const [mods, fields3] = await pool.query('SELECT * FROM Mods WHERE modID IN (?)', [dependencyIds]);
-
-    const modIds = mods.map((mod) => mod.modID);
-
-    if (modIds.length === 0) {
-      return [];
-    }
-
-    const [modVersions, fields4] = await pool.query('SELECT * FROM ModVersions WHERE modID IN (?)', [modIds]);
-
-    const versionIds = modVersions.map((modVersion) => modVersion.modVersionID);
-
-    if (versionIds.length === 0) {
-      return [];
-    }
-
-    const [dependencies2, fields5] = await pool.query('SELECT * FROM ModDependencies WHERE modVersionID IN (?)', [versionIds]);
-
-    const requiredDependencies2 = dependencies2.filter((dependency) => dependency.dependencyType === 'required');
-
-    const dependencyIds2 = requiredDependencies2.map((dependency) => dependency.dependencyModID);
-
-    if (dependencyIds2.length === 0) {
-      return requiredDependencies;
-    }
-
-    const [mods2, fields6] = await pool.query('SELECT * FROM Mods WHERE modID IN (?)', [dependencyIds2]);
-
-    const modIds2 = mods2.map((mod) => mod.modID);
-
-    if (modIds2.length === 0) {
-      return requiredDependencies;
-    }
-
-    const [modVersions2, fields7] = await pool.query('SELECT * FROM ModVersions WHERE modID IN (?)', [modIds2]);
-
-    const versionIds2 = modVersions2.map((modVersion) => modVersion.modVersionID);
-
-    if (versionIds2.length === 0) {
-      return requiredDependencies.concat(requiredDependencies2);
-    }
-
-    const [dependencies3, fields8] = await pool.query('SELECT * FROM ModDependencies WHERE modVersionID IN (?)', [versionIds2]);
-
-    const requiredDependencies3 = dependencies3.filter((dependency) => dependency.dependencyType === 'required');
-
-    return requiredDependencies.concat(requiredDependencies2).concat(requiredDependencies3);
+    return res.json(mods);
   } catch (error) {
     console.error(error);
-    return [];
+    return res.status(500).json({ message: 'Internal server error' });
   }
-}
-
-
-//Test to get all dependencies for a specific mod version console log:
-getDependencies('3').then((dependencies) => console.log(dependencies));
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  
-      
-
-
-
+});
 
 
 
