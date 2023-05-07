@@ -380,9 +380,9 @@ app.get('/search/:fragment', async (req, res) => {
 //URL: /tags/{tag}
 //Example: /tags/qol?limit=10&offset=0
 
-app.get('/tags/:tag', async (req, res) => {
+app.get('/tags/:tags', async (req, res) => {
   try {
-    const { tag } = req.params;
+    let { tags } = req.params;
     let { limit, offset } = req.query;
     limit = parseInt(limit);
     offset = parseInt(offset);
@@ -391,12 +391,32 @@ app.get('/tags/:tag', async (req, res) => {
     limit = limit || 10;
     offset = offset || 0;
 
-    let sql = 'SELECT * FROM Mods WHERE modTags LIKE ? LIMIT ? OFFSET ?';
-
-    const params = [`%${tag}%`, limit, offset];
 
     // Ensure that limit is not greater than 100
     limit = Math.min(limit, 100);
+
+    //remove spaces from tags
+    tags = tags.replace(/\s/g, '');
+    //seperate tags by commas
+    const tagsArray = tags.split(',');
+
+    let sql = 'SELECT * FROM Mods WHERE (';
+    for (let i = 0; i < tagsArray.length; i++) {
+      sql += 'modTags LIKE ?';
+      if (i < tagsArray.length - 1) {
+        sql += ' AND ';
+      }
+    }
+    sql += ') LIMIT ? OFFSET ?';
+
+    const params = [];
+
+    for (let i = 0; i < tagsArray.length; i++) {
+      params.push(`%${tagsArray[i]}%`);
+    }
+
+    params.push(limit, offset);
+
 
     const [mods, fields] = await pool.query(sql, params);
 
