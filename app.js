@@ -361,8 +361,18 @@ app.get('/all/:modId/:versionNumberInput', async (req, res) => {
 app.get('/search/:fragment', async (req, res) => {
   try {
     const { fragment } = req.params;
+    let { limit, offset } = req.query;
+    limit = parseInt(limit);
+    offset = parseInt(offset);
 
-    const [mods, fields] = await pool.query('SELECT * FROM Mods WHERE modName LIKE ?', [`%${fragment}%`]);
+    // Set default values if limit or offset are not provided
+    limit = limit || 10;
+    offset = offset || 0;
+
+    limit = Math.min(limit, 100);
+
+
+    const [mods, fields] = await pool.query('SELECT * FROM Mods WHERE modName LIKE ? LIMIT ? OFFSET ?', [`%${fragment}%`, limit, offset]);
 
     if (mods.length === 0) {
       return res.status(404).json({ message: 'Mod not found' });
