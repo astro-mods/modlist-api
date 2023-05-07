@@ -32,7 +32,6 @@ const pool = mysql.createPool(process.env.DATABASE_URL);
 app.get('/mods/total', async (req, res) => {
   try {
     const [mods, fields] = await pool.query('SELECT COUNT(*) FROM Mods');
-    console.log(mods);
 
     return res.json(mods[0]['count(*)']);
   } catch (error) {
@@ -326,6 +325,46 @@ app.get('/search/:fragment', async (req, res) => {
     return res.status(500).json({ message: 'Internal server error' });
   }
 });
+
+// List Mods with tags:
+//Method: GET
+//URL: /tags/{tag}
+//Example: /tags/qol?limit=10&offset=0
+
+app.get('/tags/:tag', async (req, res) => {
+  try {
+    const { tag } = req.params;
+    let { limit, offset } = req.query;
+    limit = parseInt(limit);
+    offset = parseInt(offset);
+
+    // Set default values if limit or offset are not provided
+    limit = limit || 10;
+    offset = offset || 0;
+
+    let sql = 'SELECT * FROM Mods WHERE modTags LIKE ? LIMIT ? OFFSET ?';
+
+    const params = [`%${tag}%`, limit, offset];
+
+    // Ensure that limit is not greater than 100
+    limit = Math.min(limit, 100);
+
+    const [mods, fields] = await pool.query(sql, params);
+
+    if (mods.length === 0) {
+      return res.status(404).json({ message: 'Mod not found' });
+    }
+
+    return res.json(mods);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+
+});
+
+
+
 
 
 
