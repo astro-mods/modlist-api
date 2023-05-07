@@ -27,13 +27,62 @@ const pool = mysql.createPool(process.env.DATABASE_URL);
 
 // Routes
 
-// Get total number of mods:
+// Get total of whatever needed:
+///Example: mods?tags=partpacks?q=vanilla
 
-app.get('/mods/total', async (req, res) => {
+app.get('/total/mods', async (req, res) => {
   try {
-    const [mods, fields] = await pool.query('SELECT COUNT(*) FROM Mods');
+    const { q } = req.query;
+    let { tags } = req.query;
 
-    return res.json(mods[0]['count(*)']);
+
+    let sql = 'SELECT COUNT(*) FROM Mods';
+
+    //seperate tags by commas
+    if (tags) {
+      tags = tags.replace(/\s/g, '');
+      const tagsArray = tags.split(',');
+      
+      //add tags to sql query
+      sql += ' WHERE (';
+      for (let i = 0; i < tagsArray.length; i++) {
+        sql += 'modTags LIKE ?';
+        if (i < tagsArray.length - 1) {
+          sql += ' AND ';
+        }
+      }
+      sql += ')';
+    }
+
+    //add search query to sql query
+    if (q) {
+      if (tags) {
+        sql += ' AND ';
+      } else {
+        sql += ' WHERE ';
+      }
+      sql += 'modName LIKE ?';
+    }
+
+    const params = [];
+
+    //add tags to params
+    if (tags) {
+      const tagsArray = tags.split(',');
+      for (let i = 0; i < tagsArray.length; i++) {
+        params.push(`%${tagsArray[i]}%`);
+      }
+    }
+
+    //add search query to params
+    if (q) {
+      params.push(`%${q}%`);
+    }
+    
+    const [total, fields] = await pool.query(sql, params);
+
+
+    return res.json(total[0]['count(*)']);
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: 'Internal server error' });
@@ -362,6 +411,8 @@ app.get('/tags/:tag', async (req, res) => {
   }
 
 });
+
+
 
 
 
