@@ -342,17 +342,6 @@ app.get('/all/:modId/:versionNumberInput', async (req, res) => {
   }
 });
 
-//Get every file required to install a specific mod version:
-//Method: GET
-//URL: /simple/{modId}/{versionNumber}
-//Example: /simple/UITools/1.0.0?dependencies=optional
-//Default Example: /simple/UITools/latest?dependencies=required
-//When a dependency is optional, it will be included in the response if ?dependencies=optional is provided.
-//This endpoint returns all file rows for that mod and all of its dependencies by looping.
-//Completely different from /install/{modId}/{versionNumber}.
-
-// That endpoint can be done later if we want to.
-
 //Search by mod name:
 //Method: GET
 //URL: /search/{fragment of mod name}
@@ -441,6 +430,64 @@ app.get('/tags/:tags', async (req, res) => {
   }
 
 });
+
+
+// List all file links for downloading a specific mod version
+//Method: GET
+//URL: /download/{versionId}/
+//Example: /download/3/
+
+
+async function getAllDependencies(versionId, pool) {
+  const allDependencies = await getAllDependenciesHelper([versionId], pool, new Set());
+  return Array.from(allDependencies);
+}
+
+async function getAllDependenciesHelper(versionIds, pool, fetchedDependencies) {
+  const idsToFetch = versionIds.filter((id) => !fetchedDependencies.has(id));
+  if (idsToFetch.length === 0) {
+    // All dependencies have been fetched, return a Set of unique IDs as strings
+    return Array.from(fetchedDependencies).map((id) => id.toString());
+  }
+
+  const [dependencies, fields] = await pool.query('SELECT * FROM ModDependencies WHERE modVersionID IN (?)', [idsToFetch]);
+  const dependencyModIDs = dependencies.map((dependency) => dependency.dependencyModID);
+
+  let dependencyVersionIDs = [];
+  if (dependencyModIDs.length > 0) {
+    const [dependencyVersions, fields2] = await pool.query('SELECT * FROM ModVersions WHERE modID IN (?)', [dependencyModIDs]);
+    dependencyVersionIDs = dependencyVersions.map((dependencyVersion) => dependencyVersion.modVersionID);
+  }
+
+  const nestedDependencies = await getAllDependenciesHelper(dependencyVersionIDs, pool, new Set([...fetchedDependencies, ...idsToFetch]));
+  const allDependencies = new Set([...dependencyVersionIDs, ...nestedDependencies].map((id) => id.toString()));
+  return allDependencies;
+}
+
+
+
+
+
+app.get('/download/:versionId', async (req, res) => {
+  try {
+    const { versionId } = req.params;
+
+    // Save all dependencies to a Set
+
+    let dependencyToDownlodIds = new Set();
+
+    const allDependencies = await getAllDependencies(versionId, pool);
+    dependencyToDownlodIds = allDependencies;
+        
+    const [dependencyFiles, fields] = await pool.query('SELECT fileURL, fileType FROM ModFiles WHERE modVersionID IN (?)', [dependencyToDownlodIds]);
+
+    res.json(dependencyFiles);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 
 
 
