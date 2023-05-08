@@ -251,14 +251,10 @@ app.get('/versions/:versionId/dependencies', async (req, res) => {
   }
 });
 
-//Get everything required to install a specific mod version:
-//Method: GET
-//URL: /all/{modId}/{versionId}
-//Example: /all/UITools/1.0.0?dependencies=optional
-//Default Example: /all/UITools/latest?dependencies=required
-//When a dependency is optional, it will be included in the response if ?dependencies=optional is provided.
-
-app.get('/all/:modId/:versionNumberInput', async (req, res) => {
+// something
+// GET
+//blahblah blah
+app.get('/version/alternative/:modId/:versionNumberInput', async (req, res) => {
   try {
     const { modId, versionNumberInput } = req.params;
     const { dependencies } = req.query;
@@ -271,71 +267,21 @@ app.get('/all/:modId/:versionNumberInput', async (req, res) => {
       versionNumber = version[0].versionNumber;
     }
 
-
-    const [mod, fields] = await pool.query('SELECT * FROM Mods WHERE modID = ?', [modId]);
-
-    if (mod.length === 0) {
-      return res.status(404).json({ message: 'Mod not found' });
-    }
-
     const [version, fields2] = await pool.query('SELECT * FROM ModVersions WHERE modID = ? AND versionNumber = ?', [modId, versionNumber]);
 
     if (version.length === 0) {
       return res.status(404).json({ message: 'Version not found' });
     }
-
-    const [files, fields3] = await pool.query('SELECT * FROM ModFiles WHERE modVersionID = ?', [version[0].modVersionID]);
-
-    if (files.length === 0) {
-      return res.status(404).json({ message: 'Files not found' });
-    }
-
-    const [dependencies2, fields4] = await pool.query('SELECT * FROM ModDependencies WHERE modVersionID = ?', [version[0].modVersionID]);
-    //There can be no dependencies, so we don't need to check for a 404 here.
-
     // End of Queries
 
     // Start of Response
 
     const response = {
-      mod: mod[0],
       version: version[0],
-      files: files,
     };
 
-    // End of Response
-
-    // Start of Optional Dependencies
-
-    // If there are no dependencies, we can just return the response
-
-    if (dependencies2.length === 0) {
-      return res.json(response);
-    }
-
-    // If there are dependencies, we need to check if the user wants to install the dependencies with optional and required or only the required dependencies.
-    
-    // If the user wants to install the optional dependencies, we can just add the dependencies to the response and return it.
-
-    if (dependencies === 'optional') {
-      response.dependencies = dependencies2;
-      return res.json(response);
-    }
-
-    // If the user wants to install only the required dependencies, we need to filter out the optional dependencies.
-
-    const requiredDependencies = dependencies2.filter((dependency) => dependency.dependencyType === 'required');
-
-    // If there are no required dependencies, we can just return the response
-
-    if (requiredDependencies.length === 0) {
-      return res.json(response);
-    }
-
-    // If there are required dependencies, we need to add them to the response and return it.
-
-    response.dependencies = requiredDependencies;
     return res.json(response);
+
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: 'Internal server error' });
