@@ -253,7 +253,7 @@ app.get('/versions/:versionId/dependencies', async (req, res) => {
 
 // something
 // GET
-//blahblah blah
+//blahblah
 app.get('/version/alternative/:modId/:versionNumberInput', async (req, res) => {
   try {
     const { modId, versionNumberInput } = req.params;
@@ -276,9 +276,7 @@ app.get('/version/alternative/:modId/:versionNumberInput', async (req, res) => {
 
     // Start of Response
 
-    const response = {
-      version: version[0],
-    };
+    const response = version[0];
 
     return res.json(response);
 
