@@ -162,22 +162,7 @@ app.get('/mods/:modID', async (req, res) => {
 //Method: GET
 //URL: /mods/{modID}/versions
 //Example: /mods/UITools/versions
-app.get('/mods/:modID/versions', async (req, res) => {
-  try {
-    const { modID } = req.params;
 
-    const [versions, fields2] = await pool.query('SELECT * FROM ModVersions WHERE modID = ?', [modID]);
-
-    if (versions.length === 0) {
-      return res.status(404).json({ message: 'Mod or versions not found' });
-    }
-
-    return res.json(versions);
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: 'Internal server error' });
-  }
-});
 
 //Get a specific version of a mod:
 //Method: GET
@@ -305,10 +290,10 @@ app.get('/version/alternative/:modId/:versionNumberInput', async (req, res) => {
 //Method: GET
 //URL: /search/{fragment of mod name}?tags={tag}?limit={limit}?offset={offset}
 //Example: /search/UITo?tags=qol?limit=10?offset=0
-app.get('/search/:fragment', async (req, res) => {
+
+app.get('/mods', async (req, res) => {
   try {
-    const { fragment } = req.params;
-    let { tags, limit, offset } = req.query;
+    let { fragment, tags, limit, offset } = req.query;
     limit = parseInt(limit);
     offset = parseInt(offset);
 
