@@ -293,7 +293,8 @@ app.get('/version/alternative/:modId/:versionNumberInput', async (req, res) => {
 
 app.get('/mods', async (req, res) => {
   try {
-    let { fragment, tags, limit, offset } = req.query;
+    let { q, tags, limit, offset } = req.query;
+    let fragment = q;
     limit = parseInt(limit);
     offset = parseInt(offset);
 
