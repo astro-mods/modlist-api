@@ -304,8 +304,13 @@ app.get('/mods', async (req, res) => {
     // Ensure that limit is not greater than 100
     limit = Math.min(limit, 100);
 
-    let sql = 'SELECT * FROM Mods WHERE modName LIKE ?';
-
+    if (fragment) {
+      let sql = 'SELECT * FROM Mods WHERE modName LIKE ?';
+      const params = [`%${fragment}%`];
+    } else { 
+      let sql = 'SELECT * FROM Mods';
+      const params = [];
+    } 
     // Separate tags by commas
     if (tags) {
       tags = tags.replace(/\s/g, '');
