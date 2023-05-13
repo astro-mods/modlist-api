@@ -115,6 +115,16 @@ app.get('/mods', async (req, res) => {
 
     const [mods, fields] = await pool.query(sql, params);
 
+    // Get the rest of the mod data from ModInfo with one query
+    const modIDs = mods.map((mod) => mod.modID);
+    const [modInfo, fields2] = await pool.query('SELECT * FROM ModInfo WHERE modID IN (?)', [modIDs]);
+
+    // Combine the two arrays into one
+    for (let i = 0; i < mods.length; i++) {
+      mods[i] = { ...mods[i], ...modInfo[i] };
+    }
+    
+
     return res.json(mods);
   } catch (error) {
     console.error(error);
@@ -291,84 +301,59 @@ app.get('/version/alternative/:modId/:versionNumberInput', async (req, res) => {
   }
 });
 
-//Search by mod name:
+// Endpoint to search by mod name and tags:
 //Method: GET
-//URL: /search/{fragment of mod name}
-//Example: /search/UITo
-
+//URL: /search/{fragment of mod name}?tags={tag}?limit={limit}?offset={offset}
+//Example: /search/UITo?tags=qol?limit=10?offset=0
 app.get('/search/:fragment', async (req, res) => {
   try {
     const { fragment } = req.params;
-    let { limit, offset } = req.query;
+    let { tags, limit, offset } = req.query;
     limit = parseInt(limit);
     offset = parseInt(offset);
 
     // Set default values if limit or offset are not provided
     limit = limit || 10;
     offset = offset || 0;
-
-    limit = Math.min(limit, 100);
-
-
-    const [mods, fields] = await pool.query('SELECT * FROM Mods WHERE modName LIKE ? LIMIT ? OFFSET ?', [`%${fragment}%`, limit, offset]);
-
-    if (mods.length === 0) {
-      return res.status(404).json({ message: 'Mod not found' });
-    }
-
-    return res.json(mods);
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: 'Internal server error' });
-  }
-});
-
-// List Mods with tags:
-//Method: GET
-//URL: /tags/{tag}
-//Example: /tags/qol?limit=10&offset=0
-
-app.get('/tags/:tags', async (req, res) => {
-  try {
-    let { tags } = req.params;
-    let { limit, offset } = req.query;
-    limit = parseInt(limit);
-    offset = parseInt(offset);
-
-    // Set default values if limit or offset are not provided
-    limit = limit || 10;
-    offset = offset || 0;
-
 
     // Ensure that limit is not greater than 100
     limit = Math.min(limit, 100);
 
-    //remove spaces from tags
-    tags = tags.replace(/\s/g, '');
-    //seperate tags by commas
-    const tagsArray = tags.split(',');
+    let sql = 'SELECT * FROM Mods WHERE modName LIKE ?';
 
-    let sql = 'SELECT * FROM Mods WHERE (';
-    for (let i = 0; i < tagsArray.length; i++) {
-      sql += 'modTags LIKE ?';
-      if (i < tagsArray.length - 1) {
-        sql += ' AND ';
+    // Separate tags by commas
+    if (tags) {
+      tags = tags.replace(/\s/g, '');
+      const tagsArray = tags.split(',');
+
+      // Add tags to SQL query
+      sql += ' AND (';
+      for (let i = 0; i < tagsArray.length; i++) {
+        sql += 'modTags LIKE ?';
+        if (i < tagsArray.length - 1) {
+          sql += ' AND ';
+        }
       }
+      sql += ')';
     }
-    sql += ') LIMIT ? OFFSET ?';
 
-    const params = [];
+    sql += ' LIMIT ? OFFSET ?';
 
-    for (let i = 0; i < tagsArray.length; i++) {
-      params.push(`%${tagsArray[i]}%`);
+    const params = [`%${fragment}%`];
+
+    // Add tags to params
+    if (tags) {
+      const tagsArray = tags.split(',');
+      for (let i = 0; i < tagsArray.length; i++) {
+        params.push(`%${tagsArray[i]}%`);
+      }
     }
 
     params.push(limit, offset);
 
-
     const [mods, fields] = await pool.query(sql, params);
 
-    if (mods.length === 0) {
+    if (mods.length === 0) {  
       return res.status(404).json({ message: 'Mod not found' });
     }
 
@@ -377,8 +362,8 @@ app.get('/tags/:tags', async (req, res) => {
     console.error(error);
     return res.status(500).json({ message: 'Internal server error' });
   }
-
 });
+
 
 
 // List all file links for downloading a specific mod version
@@ -412,10 +397,6 @@ async function getAllDependenciesHelper(versionIds, pool, fetchedDependencies) {
   const allDependencies = new Set([...dependencyVersionIDs, ...nestedDependencies].map((id) => id.toString()));
   return allDependencies;
 }
-
-
-
-
 
 app.get('/download/:versionId', async (req, res) => {
   try {
