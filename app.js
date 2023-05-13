@@ -136,6 +136,11 @@ app.get('/mods/:modID', async (req, res) => {
       return res.status(404).json({ message: 'Mod not found' });
     }
 
+    // Get the rest of the mod data from ModInfo
+    const [modInfo, fields2] = await pool.query('SELECT * FROM ModInfo WHERE modID = ?', [modID]);
+    //combine them into the same
+    mods[0] = { ...mods[0], ...modInfo[0] };
+
     return res.json(mods[0]);
   } catch (error) {
     console.error(error);
