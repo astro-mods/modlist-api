@@ -90,47 +90,6 @@ app.get('/total/mods', async (req, res) => {
 });
 
 
-app.get('/mods', async (req, res) => {
-  try {
-    let { limit, offset, author } = req.query;
-    limit = parseInt(limit);
-    offset = parseInt(offset);
-    
-    // Set default values if limit or offset are not provided
-    limit = limit || 10;
-    offset = offset || 0;
-
-    let sql = 'SELECT * FROM Mods';
-
-    if (author) {
-      sql += ' WHERE modAuthor = ?';
-    }
-
-    sql += ' LIMIT ? OFFSET ?';
-
-    const params = author ? [author, limit, offset] : [limit, offset];
-
-    // Ensure that limit is not greater than 100
-    limit = Math.min(limit, 100);
-
-    const [mods, fields] = await pool.query(sql, params);
-
-    // Get the rest of the mod data from ModInfo with one query
-    const modIDs = mods.map((mod) => mod.modID);
-    const [modInfo, fields2] = await pool.query('SELECT * FROM ModInfo WHERE modID IN (?)', [modIDs]);
-
-    // Combine the two arrays into one
-    for (let i = 0; i < mods.length; i++) {
-      mods[i] = { ...mods[i], ...modInfo[i] };
-    }
-    
-
-    return res.json(mods);
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: 'Internal server error' });
-  }
-});
 
 // Get a specific mod:
 //Method: GET
