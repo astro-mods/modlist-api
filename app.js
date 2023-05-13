@@ -263,14 +263,14 @@ app.get('/mods', async (req, res) => {
 
     // Ensure that limit is not greater than 100
     limit = Math.min(limit, 100);
+    
+    let sql = 'SELECT * FROM Mods';
+    const params = [];
 
     if (fragment) {
-      let sql = 'SELECT * FROM Mods WHERE modName LIKE ?';
-      const params = [`%${fragment}%`];
-    } else { 
-      let sql = 'SELECT * FROM Mods';
-      const params = [];
-    } 
+      sql += ' WHERE modName LIKE ?';
+      params.push = [`%${fragment}%`];
+    }
     // Separate tags by commas
     if (tags) {
       tags = tags.replace(/\s/g, '');
@@ -288,8 +288,6 @@ app.get('/mods', async (req, res) => {
     }
 
     sql += ' LIMIT ? OFFSET ?';
-
-    const params = [`%${fragment}%`];
 
     // Add tags to params
     if (tags) {
