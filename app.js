@@ -325,12 +325,22 @@ app.get('/mods', async (req, res) => {
     for (let i = 0; i < mods.length; i++) {
       const mod = mods[i];
       const [modInfo, fields2] = await pool.query('SELECT * FROM ModInfo WHERE modID = ?', [mod.modID]);
-      const { github, forum, donation } = modInfo[0];
-      mod.github = github;
-      mod.forum = forum;
-      mod.donation = donation;
+      
+      if (modInfo.length > 0) {
+        const { github, forum, donation } = modInfo[0];
+        mod.github = github || null; // Assign null if github is falsy
+        mod.forum = forum || null; // Assign null if forum is falsy
+        mod.donation = donation || null; // Assign null if donation is falsy
+      } else {
+        // Handle the case where no modInfo is found for the given modID
+        mod.github = null;
+        mod.forum = null;
+        mod.donation = null;
+      }
+      
       delete mod.modInfo; // Optionally, remove the modInfo property if it's no longer needed
     }
+    
     
     
       
