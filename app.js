@@ -242,6 +242,7 @@ app.get('/version/alternative/:modId/:versionNumberInput', async (req, res) => {
     if (version.length === 0) {
       return res.status(404).json({ message: 'Version not found' });
     }
+    
     // End of Queries
 
     // Start of Response
@@ -320,7 +321,14 @@ app.get('/mods', async (req, res) => {
       return res.status(404).json({ message: 'Mod not found' });
     }
 
+    // Add modInfo table fields to each mod using mods[0] = { ...mods[0], ...modInfo[0] };
+    const [modInfo, fields2] = await pool.query('SELECT * FROM ModInfo WHERE modID = ?', [mods[0].modID]);
+    mods[0] = { ...mods[0], ...modInfo[0] };
+      
+
+
     return res.json(mods);
+
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: 'Internal server error' });
