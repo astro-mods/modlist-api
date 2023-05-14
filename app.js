@@ -321,9 +321,18 @@ app.get('/mods', async (req, res) => {
       return res.status(404).json({ message: 'Mod not found' });
     }
 
-    // Add modInfo table fields to each mod using mods[0] = { ...mods[0], ...modInfo[0] };
-    const [modInfo, fields2] = await pool.query('SELECT * FROM ModInfo WHERE modID = ?', [mods[0].modID]);
-    mods[0] = { ...mods[0], ...modInfo[0] };
+    // Add modInfo table fields to each mod
+    for (let i = 0; i < mods.length; i++) {
+      const mod = mods[i];
+      const [modInfo, fields2] = await pool.query('SELECT * FROM ModInfo WHERE modID = ?', [mod.modID]);
+      const { github, forum, donation } = modInfo[0];
+      mod.github = github;
+      mod.forum = forum;
+      mod.donation = donation;
+      delete mod.modInfo; // Optionally, remove the modInfo property if it's no longer needed
+    }
+    
+    
       
 
 
