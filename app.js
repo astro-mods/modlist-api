@@ -117,6 +117,22 @@ app.get('/mods/:modID', async (req, res) => {
 //URL: /mods/{modID}/versions
 //Example: /mods/UITools/versions
 
+app.get('/mods/:modID/versions', async (req, res) => {
+  try {
+    const { modID } = req.params;
+
+    const [versions, fields2] = await pool.query('SELECT * FROM ModVersions WHERE modID = ?', [modID]);
+
+    if (versions.length === 0) {
+      return res.status(404).json({ message: 'Mod or versions not found' });
+    }
+
+    return res.json(versions);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+});
 
 //Get a specific version of a mod:
 //Method: GET
@@ -264,7 +280,7 @@ app.get('/mods', async (req, res) => {
 
     if (fragment) {
       sql += ' WHERE modName LIKE ?';
-      params.push = [`%${fragment}%`];
+      params.push(`%${fragment}%`);
     }
     // Separate tags by commas
     if (tags) {
@@ -272,7 +288,11 @@ app.get('/mods', async (req, res) => {
       const tagsArray = tags.split(',');
 
       // Add tags to SQL query
+      if (fragment) {
       sql += ' AND (';
+      } else {
+        sql += ' WHERE (';
+      }
       for (let i = 0; i < tagsArray.length; i++) {
         sql += 'modTags LIKE ?';
         if (i < tagsArray.length - 1) {
