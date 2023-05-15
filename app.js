@@ -351,23 +351,27 @@ app.get('/mods', async (req, res) => {
     if (sponsors.length > 0) {
       const sponsor = sponsors[0];
       const [sponsorMod, fields4] = await pool.query('SELECT * FROM Mods WHERE modID = ?', [sponsor.modID]);
-      // Add modInfo table fields to mod
-      const [modInfo, fields5] = await pool.query('SELECT * FROM ModInfo WHERE modID = ?', [sponsor.modID]);
-      if (modInfo.length > 0) {
-        const { github, forum, donation } = modInfo[0];
-        sponsorMod[0].github = github || null; // Assign null if github is falsy
-        sponsorMod[0].forum = forum || null; // Assign null if forum is falsy
-        sponsorMod[0].donation = donation || null; // Assign null if donation is falsy
-        sponsorMod[0].sponsor = true;
-        delete sponsorMod[0].modInfo; // Optionally, remove the modInfo property if it's no longer needed
-      } else {
-        // Handle the case where no modInfo is found for the given modID
-        sponsorMod[0].github = null;
-        sponsorMod[0].forum = null;
-        sponsorMod[0].donation = null;
-        sponsorMod[0].sponsor = true;
+      if (sponsorMod.length > 0) {
+      
+
+        // Add modInfo table fields to mod
+        const [modInfo, fields5] = await pool.query('SELECT * FROM ModInfo WHERE modID = ?', [sponsor.modID]);
+        if (modInfo.length > 0) {
+          const { github, forum, donation } = modInfo[0];
+          sponsorMod[0].github = github || null; // Assign null if github is falsy
+          sponsorMod[0].forum = forum || null; // Assign null if forum is falsy
+          sponsorMod[0].donation = donation || null; // Assign null if donation is falsy
+          sponsorMod[0].sponsor = true;
+          delete sponsorMod[0].modInfo; // Optionally, remove the modInfo property if it's no longer needed
+        } else {
+          // Handle the case where no modInfo is found for the given modID
+          sponsorMod[0].github = null;
+          sponsorMod[0].forum = null;
+          sponsorMod[0].donation = null;
+          sponsorMod[0].sponsor = true;
+        }
+        mods.unshift(sponsorMod[0]);
       }
-      mods.unshift(sponsorMod[0]);
     }
          
 
