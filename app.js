@@ -439,13 +439,30 @@ app.get('/download/:versionId', async (req, res) => {
   }
 });
 
+// Enpoint to check if mod is installable by checking if modversion latest has a file if it gets to one stop instantly and return true
 
+app.get('/installable/:modId', async (req, res) => {
+  try {
+    const { modId } = req.params;
 
+    const [versions, fields] = await pool.query('SELECT * FROM ModVersions WHERE modID = ? ORDER BY versionNumber DESC LIMIT 1', [modId]);
 
+    if (versions.length === 0) {
+      return res.status(404).json({ message: 'Mod not found' });
+    }
 
+    const [files, fields2] = await pool.query('SELECT * FROM ModFiles WHERE modVersionID = ? LIMIT 1', [versions[0].modVersionID]);
 
+    if (files.length === 0) {
+      return res.status(404).json({ message: 'Mod not found' });
+    }
 
-
+    return res.json(true);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+});
 
 
 
