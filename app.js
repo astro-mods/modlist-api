@@ -347,8 +347,9 @@ app.get('/mods', async (req, res) => {
         // Get Sponsored Mod from Sponsors table and add it to the front
     // Sponsor is determined by current date "1"	"parteditor"	"2023-05-15"	"2023-05-17"
     const [sponsors, fields3] = await pool.query('SELECT * FROM Sponsors WHERE start <= ? AND end >= ?', [new Date(), new Date()]);
-
-    if (sponsors.length > 0) {
+    // if sponsor mod lenght is not null and fragment is null
+    
+    if (sponsors.length > 0 && q === undefined && offset === 0 && tags === undefined) {
       const sponsor = sponsors[0];
       const [sponsorMod, fields4] = await pool.query('SELECT * FROM Mods WHERE modID = ?', [sponsor.modID]);
       if (sponsorMod.length > 0) {
