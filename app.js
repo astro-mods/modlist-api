@@ -1,6 +1,7 @@
 require('dotenv').config();
 
 const express = require('express');
+const swagger = require('./swagger');
 const mysql = require('mysql2/promise');
 const bodyParser = require('body-parser');
 
@@ -15,8 +16,25 @@ app.use(express.json());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Health Check
-
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Check the health of the API
+ *     description: Returns a JSON object with a message indicating the health of the API
+ *     responses:
+ *       200:
+ *         description: OK
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating the health of the API
+ *                   example: Healthy
+ */
 app.get('/health', (req, res) => {
   res.status(200).json({ message: 'Healthy' });
 });
@@ -26,9 +44,47 @@ const pool = mysql.createPool(process.env.DATABASE_URL);
 
 // Routes
 
-// Get total of whatever needed:
-///Example: mods?tags=partpacks?q=vanilla
-
+/**
+ * @swagger
+ * /total/mods:
+ *   get:
+ *     summary: Get the total number of mods
+ *     description: Returns the total number of mods in the database that match the specified tags and search query
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         schema:
+ *           type: string
+ *         description: A search query to filter the mods by name
+ *       - in: query
+ *         name: tags
+ *         schema:
+ *           type: string
+ *         description: A comma-separated list of tags to filter the mods by
+ *     responses:
+ *       200:
+ *         description: OK
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 count:
+ *                   type: integer
+ *                   description: The total number of mods that match the specified tags and search query
+ *                   example: 10
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating the error
+ *                   example: Internal server error
+ */
 app.get('/total/mods', async (req, res) => {
   try {
     const { q } = req.query;
@@ -256,11 +312,75 @@ app.get('/version/alternative/:modId/:versionNumberInput', async (req, res) => {
   }
 });
 
-// Endpoint to search by mod name and tags:
-//Method: GET
-//URL: /search/{fragment of mod name}?tags={tag}?limit={limit}?offset={offset}
-//Example: /search/UITo?tags=qol?limit=10?offset=0
-
+/**
+ * @swagger
+ * /mods:
+ *   get:
+ *     summary: Get a list of mods
+ *     description: Retrieve a list of mods from the database, optionally filtered by search query and tags.
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         schema:
+ *           type: string
+ *         description: A search query to filter mods by name.
+ *       - in: query
+ *         name: tags
+ *         schema:
+ *           type: string
+ *         description: A comma-separated list of tags to filter mods by.
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: The maximum number of mods to return.
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *         description: The number of mods to skip before returning results.
+ *     responses:
+ *       200:
+ *         description: A list of mods matching the search criteria.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   modID:
+ *                     type: string
+ *                     description: The ID of the mod.
+ *                   modName:
+ *                     type: string
+ *                     description: The name of the mod.
+ *                   modVersion:
+ *                     type: string
+ *                     description: The version of the mod.
+ *                   modTags:
+ *                     type: string
+ *                     description: A comma-separated list of tags associated with the mod.
+ *                   github:
+ *                     type: string
+ *                     nullable: true
+ *                     description: The GitHub repository URL associated with the mod.
+ *                   forum:
+ *                     type: string
+ *                     nullable: true
+ *                     description: The forum URL associated with the mod.
+ *                   donation:
+ *                     type: string
+ *                     nullable: true
+ *                     description: The donation URL associated with the mod.
+ *                   sponsor:
+ *                     type: boolean
+ *                     description: Whether the mod is currently sponsored.
+ *     404:
+ *       description: No mods found matching the search criteria.
+ *     500:
+ *       description: Internal server error.
+ */
 app.get('/mods', async (req, res) => {
   try {
     let { q, tags, limit, offset } = req.query;
@@ -437,6 +557,10 @@ app.get('/download/:versionId', async (req, res) => {
     return res.status(500).json({ message: 'Internal server error' });
   }
 });
+
+
+// Call the Swagger middleware
+swagger(app);
 
 // Export the app for testing
 module.exports = app;
