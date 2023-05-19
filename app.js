@@ -355,12 +355,26 @@ app.get('/version/alternative/:modId/:versionNumberInput', async (req, res) => {
  *                   modName:
  *                     type: string
  *                     description: The name of the mod.
+ *                   modDescription:
+ *                     type: string
+ *                     description: A description of the mod.
+ *                   modAuthor:
+ *                     type: string
+ *                     description: The author of the mod.
  *                   modVersion:
  *                     type: string
  *                     description: The version of the mod.
+ *                   modReleaseDate:
+ *                     type: string
+ *                     format: date-time
+ *                     description: The release date of the mod.
  *                   modTags:
  *                     type: string
  *                     description: A comma-separated list of tags associated with the mod.
+ *                   modIcon:
+ *                     type: string
+ *                     nullable: true
+ *                     description: The URL of the mod's icon.
  *                   github:
  *                     type: string
  *                     nullable: true
@@ -376,6 +390,19 @@ app.get('/version/alternative/:modId/:versionNumberInput', async (req, res) => {
  *                   sponsor:
  *                     type: boolean
  *                     description: Whether the mod is currently sponsored.
+ *                 example:
+ *                   modID: ANAIS
+ *                   modName: ANAIS
+ *                   modDescription: Advanced NAvigation Innovative System
+ *                   modAuthor: Altaïr
+ *                   modVersion: 1.0.1
+ *                   modReleaseDate: 2023-04-24T04:00:00.000Z
+ *                   modTags: navigation, transfer, docking, gravity assist
+ *                   modIcon: null
+ *                   github: null
+ *                   forum: null
+ *                   donation: null
+ *                   sponsor: false
  *     404:
  *       description: No mods found matching the search criteria.
  *     500:
@@ -511,7 +538,43 @@ app.get('/mods', async (req, res) => {
 //URL: /download/{versionId}/
 //Example: /download/3/
 
-
+/**
+ * @swagger
+ * /download/{versionId}:
+ *   get:
+ *     summary: Download all dependencies for a mod version
+ *     description: Retrieve a list of all dependencies for a mod version, and download the files associated with those dependencies.
+ *     parameters:
+ *       - in: path
+ *         name: versionId
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: The ID of the mod version to download dependencies for.
+ *     responses:
+ *       200:
+ *         description: A list of files associated with the mod version's dependencies.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   fileURL:
+ *                     type: string
+ *                     description: The URL of the file to download.
+ *                   fileType:
+ *                     type: string
+ *                     description: The type of file to download.
+ *                 example:
+ *                   fileURL: https://example.com/mods/dependencies/dependency1.zip
+ *                   fileType: zip
+ *     404:
+ *       description: No dependencies found for the specified mod version.
+ *     500:
+ *       description: Internal server error.
+ */
 async function getAllDependencies(versionId, pool) {
   const allDependencies = await getAllDependenciesHelper([versionId], pool, new Set());
   return Array.from(allDependencies);
