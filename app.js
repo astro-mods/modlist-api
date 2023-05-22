@@ -288,7 +288,13 @@ app.get('/version/alternative/:modId/:versionNumberInput', async (req, res) => {
 
     // if versionNumber is latest then we need to get the latest version number from the database
     if (versionNumber === 'latest') {
-      const [version, fields] = await pool.query('SELECT * FROM ModVersions WHERE modID = ? ORDER BY versionNumber DESC LIMIT 1', [modId]);
+      const [version1, fields8] = await pool.query('SELECT * FROM ModVersions WHERE modID = ? AND versionNumber = ? ORDER BY versionNumber DESC LIMIT 1', [modId, "latest"]);
+      let version = version1;
+      // if there is no latest version then we need to get the latest version number from the database
+      if (version1.length === 0) {
+        const [version2, fields] = await pool.query('SELECT * FROM ModVersions WHERE modID = ? ORDER BY versionNumber DESC LIMIT 1', [modId]);
+        version = version2;
+      }      
       versionNumber = version[0].versionNumber;
     }
 
