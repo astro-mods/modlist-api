@@ -4,6 +4,7 @@ const express = require('express');
 const swagger = require('./swagger');
 const mysql = require('mysql2/promise');
 const bodyParser = require('body-parser');
+const axios = require('axios');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -526,6 +527,34 @@ app.get('/mods', async (req, res) => {
         mods.unshift(sponsorMod[0]);
       }
     }
+
+    // Replace owner with owner username from clerk api
+    for (let i = 0; i < mods.length; i++) {
+      try {
+        const mod = mods[i];
+        // Use auth bearer from envs to request clerk api
+        const owner = await axios.get(`https://api.clerk.dev/v1/users/${mod.owner}`, {
+          headers: {
+            Authorization: `Bearer ${process.env.CLERK_API_KEY}`
+          }
+        });
+        mod.modAuthor = owner.data.username;
+        //remove owner
+        delete mod.owner;
+      } catch (error) {
+        // Handle error
+        // If clerk api returns 404, then the mod author is null
+        if (error.response.status === 404) {
+          continue;
+        }
+        else {
+          console.error(error);
+          return res.status(500).json({ message: 'Internal server error' });
+        }
+      }
+      
+    }
+
          
 
 
